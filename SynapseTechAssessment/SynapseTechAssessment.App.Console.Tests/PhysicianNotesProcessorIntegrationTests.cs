@@ -1,8 +1,8 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using SynapseTechAssessment.App.Console.HostedServices;
 using SynapseTechAssessment.Data.Models;
-using SynapseTechAssessment.Services.Utilities.PhysicianNotes;
 using WireMock.RequestBuilders;
 using WireMock.ResponseBuilders;
 
@@ -12,26 +12,40 @@ namespace SynapseTechAssessment.App.Console.Tests;
 public class PhysicianNotesProcessorIntegrationTests
 {
     private CustomWebApplicationFactory _factory = null!;
-    private IPhysicianNotesProcessor _processor = null!;
+    private PhysicianNotesFileWorker _worker = null!;
+    private string _testDataDirectory = null!;
 
     [SetUp]
     public void Setup()
     {
         _factory = new CustomWebApplicationFactory();
+        _testDataDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        Directory.CreateDirectory(_testDataDirectory);
+        _factory.BuildHost(_testDataDirectory);
     }
 
     [TearDown]
     public void TearDown()
     {
         _factory.Dispose();
+        if (Directory.Exists(_testDataDirectory))
+        {
+            Directory.Delete(_testDataDirectory, true);
+        }
+    }
+
+    private void CreateTestFile(string fileName, string content)
+    {
+        File.WriteAllText(Path.Combine(_testDataDirectory, fileName), content);
     }
 
     [Test]
     public async Task ProcessPhysiciansNoteAsync_HappyPath_SuccessfullyProcessesAndPostsOrder()
     {
         // Arrange
-        var host = _factory.BuildHost();
-        _processor = host.Services.GetRequiredService<IPhysicianNotesProcessor>();
+        CreateTestFile("physician_note1.txt", "Patient John Doe needs a CPAP Machine for sleep apnea.");
+
+        _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         var expectedOrder = new Order
         {
@@ -55,14 +69,12 @@ public class PhysicianNotesProcessorIntegrationTests
             .RespondWith(Response.Create()
                 .WithStatusCode(HttpStatusCode.OK));
 
-        var testNote = "Patient John Doe needs a CPAP Machine for sleep apnea.";
-
         // Act
-        await _processor.ProcessPhysiciansNoteAsync(testNote, CancellationToken.None);
+        await _worker.StartAsync(CancellationToken.None);
 
         // Assert
         _factory.MockPhysicianNoteExtractor.Verify(
-            x => x.ExtractOrderAsync(testNote, It.IsAny<CancellationToken>()),
+            x => x.ExtractOrderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
 
         var requests = _factory.WireMockServer.LogEntries;
@@ -75,8 +87,9 @@ public class PhysicianNotesProcessorIntegrationTests
     public void ProcessPhysiciansNoteAsync_OrderClientReturns500_ThrowsException()
     {
         // Arrange
-        var host = _factory.BuildHost();
-        _processor = host.Services.GetRequiredService<IPhysicianNotesProcessor>();
+        CreateTestFile("physician_note2.txt", "Patient needs wheelchair.");
+
+        _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         var expectedOrder = new Order
         {
@@ -98,19 +111,19 @@ public class PhysicianNotesProcessorIntegrationTests
                 .WithStatusCode(HttpStatusCode.InternalServerError)
                 .WithBody("Internal Server Error"));
 
-        var testNote = "Patient needs wheelchair.";
-
         // Act & Assert
         Assert.ThrowsAsync<HttpRequestException>(async () =>
-            await _processor.ProcessPhysiciansNoteAsync(testNote, CancellationToken.None));
+            await _worker.StartAsync(CancellationToken.None));
     }
 
     [Test]
     public void ProcessPhysiciansNoteAsync_OrderClientReturns404_ThrowsException()
     {
         // Arrange
-        var host = _factory.BuildHost();
-        _processor = host.Services.GetRequiredService<IPhysicianNotesProcessor>();
+        CreateTestFile("physician_note3.txt", "Patient needs oxygen tank.");
+
+        
+        _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         var expectedOrder = new Order
         {
@@ -133,37 +146,37 @@ public class PhysicianNotesProcessorIntegrationTests
                 .WithStatusCode(HttpStatusCode.NotFound)
                 .WithBody("Not Found"));
 
-        var testNote = "Patient needs oxygen tank.";
-
         // Act & Assert
         Assert.ThrowsAsync<HttpRequestException>(async () =>
-            await _processor.ProcessPhysiciansNoteAsync(testNote, CancellationToken.None));
+            await _worker.StartAsync(CancellationToken.None));
     }
 
     [Test]
     public void ProcessPhysiciansNoteAsync_ExtractorThrowsException_PropagatesException()
     {
         // Arrange
-        var host = _factory.BuildHost();
-        _processor = host.Services.GetRequiredService<IPhysicianNotesProcessor>();
+        CreateTestFile("physician_note4.txt", "Some physician note.");
+
+        
+        _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         _factory.MockPhysicianNoteExtractor!
             .Setup(x => x.ExtractOrderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("LLM service unavailable"));
 
-        var testNote = "Some physician note.";
-
         // Act & Assert
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _processor.ProcessPhysiciansNoteAsync(testNote, CancellationToken.None));
+            await _worker.StartAsync(CancellationToken.None));
     }
 
     [Test]
     public void ProcessPhysiciansNoteAsync_RequestTimeout_ThrowsTaskCanceledException()
     {
         // Arrange
-        var host = _factory.BuildHost();
-        _processor = host.Services.GetRequiredService<IPhysicianNotesProcessor>();
+        CreateTestFile("physician_note5.txt", "Patient needs walker.");
+
+        
+        _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         var expectedOrder = new Order
         {
@@ -182,13 +195,11 @@ public class PhysicianNotesProcessorIntegrationTests
                 .WithPath("/orders")
                 .UsingPost())
             .RespondWith(Response.Create()
-                .WithDelay(TimeSpan.FromSeconds(60))
+                .WithDelay(TimeSpan.FromSeconds(5))
                 .WithStatusCode(HttpStatusCode.OK));
-
-        var testNote = "Patient needs walker.";
 
         // Act & Assert
         Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await _processor.ProcessPhysiciansNoteAsync(testNote, CancellationToken.None));
+            await _worker.StartAsync(CancellationToken.None));
     }
 }

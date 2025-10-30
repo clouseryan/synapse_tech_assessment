@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Moq;
+using SynapseTechAssessment.App.Console.HostedServices;
 using SynapseTechAssessment.Services.LLMs.OpenAI;
 using SynapseTechAssessment.Services.Utilities.Clients;
 using SynapseTechAssessment.Services.Utilities.Files;
@@ -18,7 +19,7 @@ public class CustomWebApplicationFactory : IDisposable
     public Mock<IPhysicianNoteExtractor>? MockPhysicianNoteExtractor { get; private set; }
     public WireMockServer? WireMockServer => _wireMockServer;
 
-    public IHost BuildHost(Action<IServiceCollection>? configureServices = null)
+    public void BuildHost(string testDataDirectory, Action<IServiceCollection>? configureServices = null)
     {
         _wireMockServer = WireMockServer.Start();
 
@@ -48,7 +49,7 @@ public class CustomWebApplicationFactory : IDisposable
 
         builder.Services.Configure<FileReaderSettings>(options =>
         {
-            options.DirectoryPath = "./TestData";
+            options.DirectoryPath = testDataDirectory;
         });
 
         // Mock IPhysicianNoteExtractor
@@ -60,11 +61,21 @@ public class CustomWebApplicationFactory : IDisposable
         builder.Services.AddScoped<IPhysicianNotesProcessor, PhysicianNotesProcessor>();
         builder.Services.AddScoped<FileReader>();
 
+        // Register the hosted service
+        builder.Services.AddScoped<PhysicianNotesFileWorker>();
+
         // Allow custom service configuration
         configureServices?.Invoke(builder.Services);
 
         _host = builder.Build();
-        return _host;
+    }
+
+    public IServiceScope GetScope()
+    {
+        if (_host == null)
+            throw new InvalidOperationException("Host not built.");
+
+        return _host.Services.CreateScope();
     }
 
     public void Dispose()
