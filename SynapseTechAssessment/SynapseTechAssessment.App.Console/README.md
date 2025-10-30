@@ -22,3 +22,4 @@
 ## Other notes
 - In appsettings, change the OrderClient Bypass setting to true to simulate a successful response
 - Currently cofigured to run against LMStudio, change OpenAiSettings in appsettings.json to point to openai api
+- Change logging level in appsettings.json to Debug to see more detailed logging
