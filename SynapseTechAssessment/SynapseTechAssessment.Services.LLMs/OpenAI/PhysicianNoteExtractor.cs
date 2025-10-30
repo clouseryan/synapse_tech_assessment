@@ -31,7 +31,7 @@ public class PhysicianNoteExtractor(
             var systemPrompt = """
                                You are a medical data extraction assistant. Extract the following information from physician notes:
                                - Device: The medical device being ordered
-                               - Liters: The size in liters (ONLY if the device is an oxygen tank, otherwise leave empty)
+                               - Liters: The size in liters (ONLY if the device is a portable oxygen tank, otherwise leave empty) - look for abbreviations such as '2L' or '2 L'
                                - Usage: How often or how the device should be used
                                - Diagnosis: The medical diagnosis or condition
                                - OrderingProvider: The name of the doctor ordering the device
