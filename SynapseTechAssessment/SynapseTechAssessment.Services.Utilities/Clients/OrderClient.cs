@@ -41,7 +41,7 @@ public class OrderClient
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
             _logger.LogInformation("Posting order for {Device} to endpoint", order.Device);
-            var response = await _httpClient.PostAsync("/orders", content, cancellationToken);
+            var response = await _httpClient.PostAsync("/DrExtract", content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {

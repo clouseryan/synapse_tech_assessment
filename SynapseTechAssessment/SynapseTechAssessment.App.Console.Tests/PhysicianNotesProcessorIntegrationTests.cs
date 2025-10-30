@@ -65,7 +65,7 @@ public class PhysicianNotesProcessorIntegrationTests
 
         _factory.WireMockServer!
             .Given(Request.Create()
-                .WithPath("/orders")
+                .WithPath("/DrExtract")
                 .UsingPost())
             .RespondWith(Response.Create()
                 .WithStatusCode(HttpStatusCode.OK));
@@ -80,7 +80,7 @@ public class PhysicianNotesProcessorIntegrationTests
 
         var requests = _factory.WireMockServer.LogEntries;
         Assert.That(requests.Count(), Is.EqualTo(1));
-        Assert.That(requests.First().RequestMessage.Path, Is.EqualTo("/orders"));
+        Assert.That(requests.First().RequestMessage.Path, Is.EqualTo("/DrExtract"));
         Assert.That(requests.First().RequestMessage.Method, Is.EqualTo("POST"));
     }
 
@@ -113,7 +113,7 @@ public class PhysicianNotesProcessorIntegrationTests
 
         _factory.WireMockServer!
             .Given(Request.Create()
-                .WithPath("/orders")
+                .WithPath("/DrExtract")
                 .UsingPost())
             .RespondWith(Response.Create()
                 .WithStatusCode(HttpStatusCode.InternalServerError)
@@ -163,7 +163,7 @@ public class PhysicianNotesProcessorIntegrationTests
 
         _factory.WireMockServer!
             .Given(Request.Create()
-                .WithPath("/orders")
+                .WithPath("/DrExtract")
                 .UsingPost())
             .RespondWith(Response.Create()
                 .WithStatusCode(HttpStatusCode.NotFound)
@@ -245,7 +245,7 @@ public class PhysicianNotesProcessorIntegrationTests
 
         _factory.WireMockServer!
             .Given(Request.Create()
-                .WithPath("/orders")
+                .WithPath("/DrExtract")
                 .UsingPost())
             .RespondWith(Response.Create()
                 .WithDelay(TimeSpan.FromSeconds(5))
