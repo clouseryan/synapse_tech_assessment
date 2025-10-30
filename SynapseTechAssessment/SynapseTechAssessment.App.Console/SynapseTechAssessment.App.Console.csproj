@@ -19,4 +19,15 @@
       <ProjectReference Include="..\SynapseTechAssessment.Services.Utilities\SynapseTechAssessment.Services.Utilities.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Include="..\..\physician_note1.txt">
+        <Link>Data/physician_note1.txt</Link>
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Include="..\..\physician_note2.txt">
+        <Link>Data/physician_note2.txt</Link>
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
 </Project>
