@@ -44,7 +44,7 @@ public class CustomWebApplicationFactory : IDisposable
         builder.Services.Configure<HttpClientSettings>("OrderClientSettings", options =>
         {
             options.Host = _wireMockServer.Url!;
-            options.ClientTimeout = 30;
+            options.ClientTimeout = 3;
         });
 
         builder.Services.Configure<FileReaderSettings>(options =>

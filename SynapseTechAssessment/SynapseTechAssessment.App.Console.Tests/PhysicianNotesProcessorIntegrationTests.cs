@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using SynapseTechAssessment.App.Console.HostedServices;
 using SynapseTechAssessment.Data.Models;
@@ -84,10 +85,17 @@ public class PhysicianNotesProcessorIntegrationTests
     }
 
     [Test]
-    public void ProcessPhysiciansNoteAsync_OrderClientReturns500_ThrowsException()
+    public async Task ProcessPhysiciansNoteAsync_OrderClientReturns500_LogsError()
     {
         // Arrange
         CreateTestFile("physician_note2.txt", "Patient needs wheelchair.");
+
+        var mockLogger = new Mock<ILogger<PhysicianNotesFileWorker>>();
+
+        _factory.BuildHost(_testDataDirectory, services =>
+        {
+            services.AddScoped<ILogger<PhysicianNotesFileWorker>>(_ => mockLogger.Object);
+        });
 
         _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
@@ -111,18 +119,33 @@ public class PhysicianNotesProcessorIntegrationTests
                 .WithStatusCode(HttpStatusCode.InternalServerError)
                 .WithBody("Internal Server Error"));
 
-        // Act & Assert
-        Assert.ThrowsAsync<HttpRequestException>(async () =>
-            await _worker.StartAsync(CancellationToken.None));
+        // Act
+        await _worker.StartAsync(CancellationToken.None);
+
+        // Assert
+        mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to process file")),
+                It.IsAny<HttpRequestException>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 
     [Test]
-    public void ProcessPhysiciansNoteAsync_OrderClientReturns404_ThrowsException()
+    public async Task ProcessPhysiciansNoteAsync_OrderClientReturns404_LogsError()
     {
         // Arrange
         CreateTestFile("physician_note3.txt", "Patient needs oxygen tank.");
 
-        
+        var mockLogger = new Mock<ILogger<PhysicianNotesFileWorker>>();
+
+        _factory.BuildHost(_testDataDirectory, services =>
+        {
+            services.AddScoped<ILogger<PhysicianNotesFileWorker>>(_ => mockLogger.Object);
+        });
+
         _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         var expectedOrder = new Order
@@ -146,36 +169,66 @@ public class PhysicianNotesProcessorIntegrationTests
                 .WithStatusCode(HttpStatusCode.NotFound)
                 .WithBody("Not Found"));
 
-        // Act & Assert
-        Assert.ThrowsAsync<HttpRequestException>(async () =>
-            await _worker.StartAsync(CancellationToken.None));
+        // Act
+        await _worker.StartAsync(CancellationToken.None);
+
+        // Assert
+        mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to process file")),
+                It.IsAny<HttpRequestException>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 
     [Test]
-    public void ProcessPhysiciansNoteAsync_ExtractorThrowsException_PropagatesException()
+    public async Task ProcessPhysiciansNoteAsync_ExtractorThrowsException_LogsError()
     {
         // Arrange
         CreateTestFile("physician_note4.txt", "Some physician note.");
 
-        
+        var mockLogger = new Mock<ILogger<PhysicianNotesFileWorker>>();
+
+        _factory.BuildHost(_testDataDirectory, services =>
+        {
+            services.AddScoped<ILogger<PhysicianNotesFileWorker>>(_ => mockLogger.Object);
+        });
+
         _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         _factory.MockPhysicianNoteExtractor!
             .Setup(x => x.ExtractOrderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("LLM service unavailable"));
 
-        // Act & Assert
-        Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await _worker.StartAsync(CancellationToken.None));
+        // Act
+        await _worker.StartAsync(CancellationToken.None);
+
+        // Assert
+        mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to process file")),
+                It.IsAny<InvalidOperationException>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 
     [Test]
-    public void ProcessPhysiciansNoteAsync_RequestTimeout_ThrowsTaskCanceledException()
+    public async Task ProcessPhysiciansNoteAsync_RequestTimeout_LogsError()
     {
         // Arrange
         CreateTestFile("physician_note5.txt", "Patient needs walker.");
 
-        
+        var mockLogger = new Mock<ILogger<PhysicianNotesFileWorker>>();
+
+        _factory.BuildHost(_testDataDirectory, services =>
+        {
+            services.AddScoped<ILogger<PhysicianNotesFileWorker>>(_ => mockLogger.Object);
+        });
+
         _worker = _factory.GetScope().ServiceProvider.GetRequiredService<PhysicianNotesFileWorker>();
 
         var expectedOrder = new Order
@@ -198,8 +251,17 @@ public class PhysicianNotesProcessorIntegrationTests
                 .WithDelay(TimeSpan.FromSeconds(5))
                 .WithStatusCode(HttpStatusCode.OK));
 
-        // Act & Assert
-        Assert.ThrowsAsync<TaskCanceledException>(async () =>
-            await _worker.StartAsync(CancellationToken.None));
+        // Act
+        await _worker.StartAsync(CancellationToken.None);
+
+        // Assert
+        mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to process file")),
+                It.IsAny<TaskCanceledException>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 }
