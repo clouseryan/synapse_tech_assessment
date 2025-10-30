@@ -8,37 +8,25 @@ using SynapseTechAssessment.Data.Models;
 
 namespace SynapseTechAssessment.Services.LLMs.OpenAI;
 
-public class PhysicianNoteExtractor : IPhysicianNoteExtractor
+public class PhysicianNoteExtractor(
+    OpenAIClient client,
+    ILogger<PhysicianNoteExtractor> logger,
+    IOptions<OpenAiSettings> settings) : IPhysicianNoteExtractor
 {
-    private readonly OpenAiSettings _settings;
-    private readonly OpenAIClient _client;
-    private readonly ILogger<PhysicianNoteExtractor> _logger;
-
-    private readonly JsonSerializerOptions _jsonSerializerOptions = new()
+    private readonly JsonSerializerOptions jsonSerializerOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
-
-    public PhysicianNoteExtractor(IOptions<OpenAiSettings> settingOptions, ILogger<PhysicianNoteExtractor> logger)
-    {
-        _settings = settingOptions.Value;
-        _logger = logger;
-
-        _client = new OpenAIClient(new ApiKeyCredential(_settings.ApiKey), new OpenAIClientOptions()
-        {
-            Endpoint = new Uri(_settings.Host)
-        });
-    }
-
     public async Task<Order> ExtractOrderAsync(string note, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Starting order extraction from physician note. Note length: {NoteLength} characters", note?.Length ?? 0);
+        logger.LogInformation("Starting order extraction from physician note. Note length: {NoteLength} characters",
+            note?.Length ?? 0);
 
         try
         {
-            var chatClient = _client.GetChatClient(_settings.ModelName);
-            _logger.LogDebug("Created chat client for model: {ModelName}", _settings.ModelName);
+            var chatClient = client.GetChatClient(settings.Value.ModelName);
+            logger.LogDebug("Created chat client for model: {ModelName}", settings.Value.ModelName);
 
             var systemPrompt = """
                                You are a medical data extraction assistant. Extract the following information from physician notes:
@@ -67,7 +55,7 @@ public class PhysicianNoteExtractor : IPhysicianNoteExtractor
             var messages = new List<ChatMessage>
             {
                 new SystemChatMessage(systemPrompt),
-                new UserChatMessage(note)
+                new UserChatMessage($"physicians note: {note}")
             };
 
             var chatCompletionOptions = new ChatCompletionOptions
@@ -75,40 +63,58 @@ public class PhysicianNoteExtractor : IPhysicianNoteExtractor
                 ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
             };
 
-            _logger.LogDebug("Sending chat completion request to OpenAI");
-            var response = await chatClient.CompleteChatAsync(messages, chatCompletionOptions, cancellationToken);
-            _logger.LogInformation("Successfully received response from OpenAI");
+            logger.LogDebug("Sending chat completion request to OpenAI");
+            var response = await chatClient.CompleteChatAsync(messages, cancellationToken: cancellationToken);
+            logger.LogInformation("Successfully received response from OpenAI");
 
             var jsonResponse = response.Value.Content[0].Text;
-            _logger.LogDebug("Received JSON response: {JsonResponse}", jsonResponse);
+            logger.LogDebug("Received JSON response: {JsonResponse}", jsonResponse);
 
-            var order = JsonSerializer.Deserialize<Order>(jsonResponse, _jsonSerializerOptions);
+            var cleanedJson = CleanJson(jsonResponse);
+            logger.LogDebug("Cleaned JSON response: {CleanedJson}", cleanedJson);
+
+            var order = JsonSerializer.Deserialize<Order>(cleanedJson, jsonSerializerOptions);
 
             if (order == null)
             {
-                _logger.LogWarning("Deserialization resulted in null order, returning empty order");
+                logger.LogWarning("Deserialization resulted in null order, returning empty order");
                 return new Order();
             }
 
-            _logger.LogInformation("Successfully extracted order. Device: {Device}, OrderingProvider: {OrderingProvider}",
+            logger.LogInformation(
+                "Successfully extracted order. Device: {Device}, OrderingProvider: {OrderingProvider}",
                 order.Device, order.OrderingProvider);
 
             return order;
         }
         catch (ClientResultException ex)
         {
-            _logger.LogError(ex, "OpenAI API error occurred during order extraction. Status: {Status}", ex.Status);
+            logger.LogError(ex, "OpenAI API error occurred during order extraction. Status: {Status}", ex.Status);
             throw;
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Failed to deserialize JSON response from OpenAI");
+            logger.LogError(ex, "Failed to deserialize JSON response from OpenAI");
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error occurred during order extraction");
+            logger.LogError(ex, "Unexpected error occurred during order extraction");
             throw;
         }
+    }
+
+    private static string CleanJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return json;
+
+        var firstBrace = json.IndexOf('{');
+        var lastBrace = json.LastIndexOf('}');
+
+        if (firstBrace == -1 || lastBrace == -1 || firstBrace > lastBrace)
+            return json;
+
+        return json.Substring(firstBrace, lastBrace - firstBrace + 1);
     }
 }
