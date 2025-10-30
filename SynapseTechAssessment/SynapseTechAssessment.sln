@@ -7,7 +7,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionIt
 		..\README.md = ..\README.md
 		..\SignalBooster_Assignment.docx = ..\SignalBooster_Assignment.docx
 		..\expected_output1.json = ..\expected_output1.json
+		..\physician_note1.txt = ..\physician_note1.txt
+		..\physician_note2.txt = ..\physician_note2.txt
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynapseTechAssessment.Data.Models", "SynapseTechAssessment.Data.Models\SynapseTechAssessment.Data.Models.csproj", "{7E079940-E7E2-4708-A3FA-DBF1668355F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynapseTechAssessment.Services.Utilities", "SynapseTechAssessment.Services.Utilities\SynapseTechAssessment.Services.Utilities.csproj", "{BDE77379-B468-49D0-BC74-9D0BD95F7B3A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SynapseTechAssessment.Services.LLMs", "SynapseTechAssessment.Services.LLMs\SynapseTechAssessment.Services.LLMs.csproj", "{A45AC366-AE9C-456B-A8F9-207478597886}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,5 +27,17 @@ Global
 		{F00C03EC-7A90-4C3D-9211-AC87DD063D1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F00C03EC-7A90-4C3D-9211-AC87DD063D1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F00C03EC-7A90-4C3D-9211-AC87DD063D1A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E079940-E7E2-4708-A3FA-DBF1668355F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E079940-E7E2-4708-A3FA-DBF1668355F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E079940-E7E2-4708-A3FA-DBF1668355F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E079940-E7E2-4708-A3FA-DBF1668355F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BDE77379-B468-49D0-BC74-9D0BD95F7B3A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BDE77379-B468-49D0-BC74-9D0BD95F7B3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BDE77379-B468-49D0-BC74-9D0BD95F7B3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BDE77379-B468-49D0-BC74-9D0BD95F7B3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A45AC366-AE9C-456B-A8F9-207478597886}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A45AC366-AE9C-456B-A8F9-207478597886}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A45AC366-AE9C-456B-A8F9-207478597886}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A45AC366-AE9C-456B-A8F9-207478597886}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
