@@ -4,4 +4,5 @@ public class HttpClientSettings
 {
     public string Host { get; set; }
     public int ClientTimeout { get; set; }
+    public bool Bypass { get; set; }
 }

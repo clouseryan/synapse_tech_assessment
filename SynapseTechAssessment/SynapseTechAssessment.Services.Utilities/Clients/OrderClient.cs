@@ -10,13 +10,15 @@ public class OrderClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<OrderClient> _logger;
+    private readonly HttpClientSettings _settings;
 
     public OrderClient(HttpClient httpClient, ILogger<OrderClient> logger, IOptionsSnapshot<HttpClientSettings> optionsSettings)
     {
         _httpClient = httpClient;
         _logger = logger;
-
         var settings = optionsSettings.Get("OrderClientSettings");
+        _settings = settings;
+
         _httpClient.BaseAddress = new Uri(settings.Host);
         _httpClient.Timeout = TimeSpan.FromSeconds(settings.ClientTimeout);
 
@@ -24,7 +26,12 @@ public class OrderClient
 
     public async Task PostOrderAsync(Order order, CancellationToken cancellationToken)
     {
-        _logger.LogDebug("Starting PostOrderAsync for Order ID: {OrderId}", order.Device);
+        if (_settings.Bypass)
+        {
+            _logger.LogInformation("Bypassing order posting for Device: {Device}", order.Device);
+            return;
+        }
+        _logger.LogDebug("Starting PostOrderAsync for Device: {Device}", order.Device);
 
         try
         {
@@ -38,30 +45,30 @@ public class OrderClient
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Successfully posted order {OrderId}. Status: {StatusCode}",
+                _logger.LogInformation("Successfully posted order {Device}. Status: {StatusCode}",
                     order.Device, response.StatusCode);
             }
             else
             {
                 var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("Failed to post order {OrderId}. Status: {StatusCode}, Response: {Response}",
+                _logger.LogError("Failed to post order {Device}. Status: {StatusCode}, Response: {Response}",
                     order.Device, response.StatusCode, responseBody);
                 response.EnsureSuccessStatusCode();
             }
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP request exception occurred while posting order {OrderId}", order.Device);
+            _logger.LogError(ex, "HTTP request exception occurred while posting order {Device}", order.Device);
             throw;
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogError(ex, "Request timeout or cancellation while posting order {OrderId}", order.Device);
+            _logger.LogError(ex, "Request timeout or cancellation while posting order {Device}", order.Device);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error occurred while posting order {OrderId}", order.Device);
+            _logger.LogError(ex, "Unexpected error occurred while posting order {Device}", order.Device);
             throw;
         }
     }
